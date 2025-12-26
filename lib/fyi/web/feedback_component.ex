@@ -218,7 +218,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
         </button>
 
         <%= if @show_modal do %>
-          <div class="fyi-feedback-overlay" phx-click="close" phx-target={@myself}>
+          <div class="fyi-feedback-overlay">
             <div class="fyi-feedback-modal" phx-click-away="close" phx-target={@myself}>
               <div class="fyi-feedback-header">
                 <h2>Send Feedback</h2>
