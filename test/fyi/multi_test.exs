@@ -56,4 +56,3 @@ defmodule FYI.MultiTest do
     end
   end
 end
-

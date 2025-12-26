@@ -163,4 +163,3 @@ defmodule FYI.ConfigTest do
     end
   end
 end
-
