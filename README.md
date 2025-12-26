@@ -1,13 +1,28 @@
-# FYI
+<h1 align="center">FYI</h1>
 
-In-app events & feedback with Slack/Telegram notifications for Phoenix.
+<p align="center">
+  <a href="https://hex.pm/packages/fyi"><img src="https://img.shields.io/hexpm/v/fyi.svg" alt="Hex.pm"></a>
+  <a href="https://hexdocs.pm/fyi"><img src="https://img.shields.io/badge/hex-docs-blue.svg" alt="Hex Docs"></a>
+  <a href="https://hex.pm/packages/fyi"><img src="https://img.shields.io/hexpm/dt/fyi.svg" alt="Downloads"></a>
+  <a href="https://github.com/chrisgreg/fyi/blob/main/LICENSE"><img src="https://img.shields.io/hexpm/l/fyi.svg" alt="License"></a>
+</p>
 
-FYI is a drop-in Elixir/Phoenix package that lets developers:
+<p align="center"><strong>Know what's happening in your app.</strong></p>
 
-- 📤 **Emit events** from your app (waitlist signups, purchases, etc.)
-- 💬 **Collect user feedback** via a simple in-app UI
-- 🔔 **Get notified** in Slack and Telegram when things happen
-- 🚀 **Install everything** with a single `mix fyi.install`
+---
+
+In-app events, user feedback, and instant Slack/Telegram notifications for Phoenix.
+
+Stop refreshing your database to see if users are signing up. FYI gives you:
+
+- 📤 **Event tracking** — Emit events from anywhere in your app with one line of code
+- 📊 **Live dashboard** — Beautiful admin UI with search, filtering, and activity histograms
+- 💬 **Feedback widget** — Drop-in component to collect user feedback (installs into your codebase)
+- 🔔 **Instant notifications** — Get pinged in Slack or Telegram when important things happen
+- 🎯 **Smart routing** — Send specific events to specific channels with glob patterns
+- 🚀 **One-command setup** — `mix fyi.install` handles migrations, config, and routes
+
+![FYI Admin Inbox](screenshot.png)
 
 ## Installation
 
@@ -16,7 +31,7 @@ Add `fyi` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:fyi, "~> 0.1.0"}
+    {:fyi, "~> 1.0.0"}
   ]
 end
 ```
@@ -209,6 +224,17 @@ New events will appear instantly without refreshing the page.
 }}
 ```
 
+<details>
+<summary>How to create a Slack webhook</summary>
+
+1. Go to [api.slack.com/apps](https://api.slack.com/apps) and click **Create New App**
+2. Choose **From scratch**, name it (e.g., "FYI"), and select your workspace
+3. Click **Incoming Webhooks** in the sidebar, then toggle it **On**
+4. Click **Add New Webhook to Workspace** and select the channel
+5. Copy the webhook URL — it looks like `https://hooks.slack.com/services/T00/B00/xxxx`
+
+</details>
+
 ### Telegram Bot
 
 ```elixir
@@ -218,6 +244,19 @@ New events will appear instantly without refreshing the page.
   parse_mode: "HTML"         # optional, default: "HTML"
 }}
 ```
+
+<details>
+<summary>How to create a Telegram bot</summary>
+
+1. Message [@BotFather](https://t.me/botfather) on Telegram
+2. Send `/newbot` and follow the prompts to name your bot
+3. Copy the **token** (looks like `123456789:ABCdefGHI...`)
+4. Add the bot to your group/channel and send a message
+5. Get your **chat_id** by visiting: `https://api.telegram.org/bot<TOKEN>/getUpdates`
+   - Look for `"chat":{"id":-1001234567890}` in the response
+   - Group IDs are negative numbers
+
+</details>
 
 ## Custom Sinks
 
