@@ -966,15 +966,21 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       labels =
         Enum.map(0..(buckets - 1), fn i ->
           seconds_ago = (buckets - 1 - i) * bucket_size
-          format_time_ago(seconds_ago)
+          bucket_time = DateTime.add(now, -seconds_ago, :second)
+          format_bucket_time(bucket_time, time_range)
         end)
 
       assign(socket, :histogram, %{labels: labels, values: values})
     end
 
-    defp format_time_ago(seconds) when seconds < 60, do: "#{seconds}s ago"
-    defp format_time_ago(seconds) when seconds < 3600, do: "#{div(seconds, 60)}m ago"
-    defp format_time_ago(seconds), do: "#{div(seconds, 3600)}h ago"
+    defp format_bucket_time(datetime, time_range)
+         when time_range in ["5m", "15m", "1h", "6h", "24h"] do
+      Calendar.strftime(datetime, "%H:%M")
+    end
+
+    defp format_bucket_time(datetime, _time_range) do
+      Calendar.strftime(datetime, "%b %d, %H:%M")
+    end
 
     defp bar_height(value, values) do
       max_val = Enum.max(values, fn -> 1 end)
@@ -1016,7 +1022,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       cond do
         String.contains?(name, "error") -> "ERROR"
         String.contains?(name, "warn") -> "WARN"
-        true -> "INFO"
+        true -> "EVENT"
       end
     end
   end

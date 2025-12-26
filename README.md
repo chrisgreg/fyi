@@ -36,8 +36,9 @@ This will:
 
 ### Installer Options
 
-- `--no-ui` — Skip installing the Phoenix UI components
+- `--no-ui` — Skip installing the admin inbox UI
 - `--no-persist` — Skip the database migration (events won't be persisted)
+- `--no-feedback` — Skip installing the feedback component
 
 ## Configuration
 
@@ -139,20 +140,31 @@ This ensures events are only emitted after the transaction commits successfully.
 
 ### Feedback Component
 
-Add the feedback button to any LiveView:
+The installer creates a customizable feedback component in your codebase at `lib/your_app_web/components/fyi/feedback_component.ex`.
 
-```heex
-<.live_component module={FYI.Web.FeedbackComponent} id="feedback" />
-```
-
-Or use the convenience wrapper:
+Use it in any LiveView:
 
 ```elixir
-import FYI.Web.FeedbackButton
+import MyAppWeb.FYI.FeedbackComponent
 
-# In your LiveView template
-<.fyi_feedback_button />
+# In your template
+<.feedback_button />
 ```
+
+Customize as needed:
+
+```heex
+<.feedback_button
+  title="Report an Issue"
+  button_label="Report"
+  button_icon="🐛"
+  categories={[{"bug", "Bug"}, {"ux", "UX Problem"}, {"other", "Other"}]}
+/>
+```
+
+Since the component lives in your codebase, you can freely modify the Tailwind classes, add fields, or change the behavior.
+
+Skip installing with `mix fyi.install --no-feedback`.
 
 ### Admin Inbox
 
