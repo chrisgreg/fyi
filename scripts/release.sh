@@ -72,7 +72,9 @@ if ! grep -q "## \[Unreleased\]" CHANGELOG.md; then
 fi
 
 # Check if there are actual changes in [Unreleased]
-if grep -A 3 "## \[Unreleased\]" CHANGELOG.md | grep -q "^## \["; then
+# Extract content between [Unreleased] and the next version heading
+UNRELEASED_CONTENT=$(sed -n '/^## \[Unreleased\]/,/^## \[[0-9]/p' CHANGELOG.md | sed '$d')
+if ! echo "$UNRELEASED_CONTENT" | grep -q "^-"; then
   echo -e "${RED}Error: [Unreleased] section appears to be empty${NC}"
   echo "Please add your changes to the [Unreleased] section first."
   exit 1
