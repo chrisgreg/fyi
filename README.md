@@ -276,8 +276,8 @@ defmodule MyApp.DiscordSink do
 
   @impl true
   def deliver(event, state) do
-    # POST to Discord webhook
-    case Req.post(state.webhook_url, json: %{content: event.name}) do
+    # POST to Discord webhook using FYI.Client for automatic retries
+    case FYI.Client.post(state.webhook_url, json: %{content: event.name}) do
       {:ok, %{status: s}} when s in 200..299 -> :ok
       {:ok, resp} -> {:error, resp}
       {:error, err} -> {:error, err}
@@ -299,12 +299,33 @@ sinks: [
 FYI is intentionally simple:
 
 - ❌ No Oban
-- ❌ No durable queues, retries, or backoff
-- ✅ Fire-and-forget HTTP notifications
+- ❌ No durable queues or persistent job storage
+- ✅ Fire-and-forget async delivery with automatic retries
 - ✅ Phoenix + Ecto assumed
-- ✅ Failures are logged, never block
+- ✅ Failures are logged, never block your application
 
 Think "Oban Pro install experience", but for events + feedback.
+
+### HTTP Retries
+
+FYI automatically retries failed HTTP requests to sinks using exponential backoff:
+
+- **Default**: 3 retry attempts with delays of 1s, 2s, 4s
+- **Retry conditions**: Network errors, 500-599 status codes
+- **Respects**: `Retry-After` response headers
+
+Configure retry behavior:
+
+```elixir
+# config/config.exs
+config :fyi,
+  http_client: [
+    max_retries: 5,  # default: 3
+    retry_delay: fn attempt -> attempt * 2000 end  # custom delay function
+  ]
+```
+
+Set `max_retries: 0` to disable retries entirely.
 
 ## Development
 

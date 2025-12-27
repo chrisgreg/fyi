@@ -52,7 +52,7 @@ defmodule FYI.Sink.Telegram do
       parse_mode: state.parse_mode
     }
 
-    case Req.post(url, json: payload) do
+    case FYI.Client.post(url, json: payload) do
       {:ok, %{status: 200, body: %{"ok" => true}}} ->
         :ok
 

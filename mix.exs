@@ -52,7 +52,8 @@ defmodule FYI.MixProject do
       {:phoenix_pubsub, "~> 2.1", optional: true},
 
       # Dev/Test
-      {:ex_doc, "~> 0.31", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.31", only: :dev, runtime: false},
+      {:mimic, "~> 1.7", only: :test}
     ]
   end
 

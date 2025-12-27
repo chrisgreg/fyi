@@ -40,7 +40,7 @@ defmodule FYI.Sink.SlackWebhook do
   def deliver(%Event{} = event, state) do
     payload = build_payload(event, state)
 
-    case Req.post(state.url, json: payload) do
+    case FYI.Client.post(state.url, json: payload) do
       {:ok, %{status: status}} when status in 200..299 ->
         :ok
 
