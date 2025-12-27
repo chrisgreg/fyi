@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Automatic HTTP retries** - `FYI.Client` module with exponential backoff for sink delivery
+  - Retries transient failures (network errors, 5xx status codes) up to 3 times
+  - Exponential backoff with delays of 1s, 2s, 4s
+  - Respects `Retry-After` response headers
+  - Configurable via `:http_client` config (max_retries, retry_delay)
+
+### Changed
+
+- Sinks now use `FYI.Client.post/2` for HTTP requests instead of raw `Req.post/2`
+
 ## [1.0.0] - 2024-12-26
 
 ### Added
