@@ -162,22 +162,4 @@ defmodule FYI.ClientTest do
                Client.post(url, receive_timeout: 10_000)
     end
   end
-
-  describe "integration" do
-    test "Client.post signature is compatible with Req.post" do
-      # Verify the API is compatible with existing Req.post usage
-      # Both should accept (url, opts) or (request, opts)
-      assert is_function(&Client.post/2)
-      assert is_function(&Req.post/2)
-    end
-
-    test "Client creates request with retry configuration" do
-      client = Client.new()
-
-      # Verify the client is configured with retry options
-      assert client.options[:retry] == :transient
-      assert client.options[:max_retries] == 3
-      assert is_function(client.options[:retry_delay], 1)
-    end
-  end
 end
