@@ -35,13 +35,17 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
     end
 
     @impl true
-    def handle_params(params, _uri, socket) do
+    def handle_params(params, uri, socket) do
       time_range = params["range"] || "7d"
       event_type = params["type"] || ""
       event_id = params["id"]
 
+      # Extract route prefix from URI
+      route_prefix = extract_route_prefix_from_uri(uri)
+
       socket =
         socket
+        |> assign(:route_prefix, route_prefix)
         |> assign(:time_range, time_range)
         |> assign(:event_type, event_type)
         |> load_event_types()
@@ -71,24 +75,39 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     @impl true
     def handle_event("time_range", %{"range" => range}, socket) do
-      {:noreply, push_patch(socket, to: build_url(range, socket.assigns.event_type))}
+      {:noreply, push_patch(socket, to: build_url(socket, range, socket.assigns.event_type))}
     end
 
     @impl true
     def handle_event("event_type", %{"type" => type}, socket) do
-      {:noreply, push_patch(socket, to: build_url(socket.assigns.time_range, type))}
+      {:noreply, push_patch(socket, to: build_url(socket, socket.assigns.time_range, type))}
     end
 
     @impl true
     def handle_event("close_detail", _, socket) do
       {:noreply,
-       push_patch(socket, to: build_url(socket.assigns.time_range, socket.assigns.event_type))}
+       push_patch(socket,
+         to: build_url(socket, socket.assigns.time_range, socket.assigns.event_type)
+       )}
     end
 
-    defp build_url(range, type) do
+    @doc false
+    def extract_route_prefix_from_uri(uri) do
+      # Extract the route prefix from the URI
+      # For example: "http://localhost:4000/admin/fyi?range=7d" -> "/admin/fyi"
+      #              "http://localhost:4000/fyi/events/123?range=7d" -> "/fyi"
+      uri
+      |> URI.parse()
+      |> Map.get(:path, "/fyi")
+      |> String.split("/events/")
+      |> List.first()
+    end
+
+    @doc false
+    def build_url(socket, range, type) do
       params = [{"range", range}]
       params = if type != "", do: params ++ [{"type", type}], else: params
-      "/fyi?" <> URI.encode_query(params)
+      "#{socket.assigns.route_prefix}?" <> URI.encode_query(params)
     end
 
     @impl true
@@ -697,7 +716,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
                     </div>
                   <% else %>
                   <%= for event <- @events do %>
-                    <.link patch={event_url(event.id, @time_range, @event_type)} class="fyi-event-row">
+                    <.link patch={event_url(assigns, event.id, @time_range, @event_type)} class="fyi-event-row">
                       <svg class="fyi-event-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
                       </svg>
@@ -849,10 +868,18 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
       end
     end
 
-    defp event_url(event_id, range, type) do
+    @doc false
+    def event_url(socket_or_assigns, event_id, range, type) do
+      route_prefix =
+        case socket_or_assigns do
+          %{assigns: %{route_prefix: prefix}} -> prefix
+          %{route_prefix: prefix} -> prefix
+          _ -> "/fyi"
+        end
+
       params = [{"range", range}]
       params = if type != "", do: params ++ [{"type", type}], else: params
-      "/fyi/events/#{event_id}?" <> URI.encode_query(params)
+      "#{route_prefix}/events/#{event_id}?" <> URI.encode_query(params)
     end
 
     defp time_range_since(range) do

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Nested route support** - InboxLive now correctly handles URLs when mounted in nested scopes (e.g., `/admin/fyi` instead of just `/fyi`)
+  - Event detail URLs now respect the route prefix where the LiveView is mounted
+  - Navigation between index and detail views works correctly regardless of scope nesting
+
 ## [1.0.1] - 2025-12-27
 
 ### Added
