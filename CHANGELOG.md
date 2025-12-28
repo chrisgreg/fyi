@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2025-12-28
+
 ### Fixed
 
 - **Nested route support** - InboxLive now correctly handles URLs when mounted in nested scopes (e.g., `/admin/fyi` instead of just `/fyi`)

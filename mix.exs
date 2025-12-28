@@ -1,7 +1,7 @@
 defmodule FYI.MixProject do
   use Mix.Project
 
-  @version "1.0.1"
+  @version "1.0.2"
   @source_url "https://github.com/chrisgreg/fyi"
 
   def project do
