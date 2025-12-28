@@ -54,6 +54,7 @@ This will:
 - `--no-ui` — Skip installing the admin inbox UI
 - `--no-persist` — Skip the database migration (events won't be persisted)
 - `--no-feedback` — Skip installing the feedback component
+- `--queue` — Install the durable queue system for production deployments (see [Production Deployment](#production-deployment))
 
 ## Configuration
 
@@ -296,19 +297,24 @@ sinks: [
 
 ## Design Philosophy
 
-FYI is intentionally simple:
+FYI is intentionally simple and gives you flexibility based on your needs:
 
-- ❌ No Oban
-- ❌ No durable queues or persistent job storage
+**Development & Simple Use Cases:**
 - ✅ Fire-and-forget async delivery with automatic retries
-- ✅ Phoenix + Ecto assumed
+- ✅ Zero additional dependencies beyond Ecto
 - ✅ Failures are logged, never block your application
+
+**Production Deployments:**
+- ✅ Optional durable queue using PostgreSQL SKIP LOCKED
+- ✅ No Oban or external job queue needed
+- ✅ Built-in retry logic with exponential backoff
+- ✅ Job failure tracking and manual retry capability
 
 Think "Oban Pro install experience", but for events + feedback.
 
-### HTTP Retries
+### HTTP Retries (Fire-and-Forget Mode)
 
-FYI automatically retries failed HTTP requests to sinks using exponential backoff:
+In fire-and-forget mode (default), FYI automatically retries failed HTTP requests using exponential backoff:
 
 - **Default**: 3 retry attempts with delays of 1s, 2s, 4s
 - **Retry conditions**: Network errors, 500-599 status codes
@@ -326,6 +332,164 @@ config :fyi,
 ```
 
 Set `max_retries: 0` to disable retries entirely.
+
+## Production Deployment
+
+For production workloads, enable the **durable queue system** to ensure reliable event delivery even during network failures or application restarts.
+
+### Why Use the Queue?
+
+**Fire-and-forget mode** (default) is simple but has limitations:
+- Events can be lost if the app crashes during delivery
+- Network failures beyond the 3-retry window lose events
+- No visibility into failed deliveries
+
+**Queue mode** gives you production-grade reliability:
+- Jobs persisted to PostgreSQL before delivery
+- Automatic retries with exponential backoff (up to 10 attempts over 16+ hours)
+- Failed job tracking with error history
+- Manual retry capability
+- Zero external dependencies (uses PostgreSQL's SKIP LOCKED)
+
+### Installation
+
+Install with the `--queue` flag:
+
+```bash
+mix fyi.install --queue
+```
+
+Or add the migration manually for an existing installation:
+
+```bash
+# Generate timestamp manually or use the migration below
+```
+
+<details>
+<summary>Manual migration for existing installations</summary>
+
+Create `priv/repo/migrations/TIMESTAMP_create_fyi_jobs.exs`:
+
+```elixir
+defmodule MyApp.Repo.Migrations.CreateFyiJobs do
+  use Ecto.Migration
+
+  def change do
+    create table(:fyi_jobs, primary_key: false) do
+      add :id, :binary_id, primary_key: true
+      add :event_id, :string, null: false
+      add :sink_module, :string, null: false
+      add :sink_config, :map, default: %{}
+      add :event_payload, :map, null: false
+
+      # Job state
+      add :state, :string, null: false, default: "pending"
+      add :attempts, :integer, null: false, default: 0
+      add :max_attempts, :integer, null: false, default: 10
+
+      # Retry scheduling
+      add :scheduled_at, :utc_datetime_usec, null: false
+      add :attempted_at, :utc_datetime_usec
+      add :completed_at, :utc_datetime_usec
+
+      # Error tracking
+      add :last_error, :text
+      add :errors, :jsonb, default: "[]"
+
+      timestamps(type: :utc_datetime_usec)
+    end
+
+    # Index for efficient job fetching with SKIP LOCKED
+    create index(:fyi_jobs, [:state, :scheduled_at])
+    create index(:fyi_jobs, [:event_id])
+    create index(:fyi_jobs, [:inserted_at])
+  end
+end
+```
+
+</details>
+
+### Configuration
+
+Enable the queue in your config:
+
+```elixir
+# config/config.exs (or config/prod.exs for production only)
+config :fyi,
+  queue_enabled: true,
+  queue_workers: 4,          # Number of concurrent workers (default: 2)
+  queue_poll_interval: 1000  # Poll interval in ms (default: 1000)
+```
+
+### How It Works
+
+1. **Enqueue**: When you call `FYI.emit()`, the event is persisted to `fyi_jobs` table
+2. **Poll**: Worker processes poll for pending jobs using PostgreSQL's `SKIP LOCKED`
+3. **Process**: Each worker safely processes different jobs (no race conditions)
+4. **Retry**: Failed jobs are automatically retried with exponential backoff:
+   - Attempt 1: immediate
+   - Attempt 2: 30 seconds
+   - Attempt 3: 2 minutes
+   - Attempt 4: 10 minutes
+   - Attempts 5-10: 30 min, 1 hr, 2 hr, 4 hr, 8 hr, 16 hr
+5. **Track**: Failed jobs are marked permanently failed after 10 attempts
+
+### Monitoring Failed Jobs
+
+Check queue stats programmatically:
+
+```elixir
+FYI.Queue.stats()
+# => %{pending: 5, processing: 2, failed: 1, completed: 1234}
+
+# List failed jobs
+FYI.Queue.list_failed(limit: 50)
+
+# Manually retry a failed job
+FYI.Queue.retry_job(job_id)
+```
+
+### Cleanup
+
+Completed jobs are kept for debugging. Clean them up periodically:
+
+```elixir
+# Delete completed jobs older than 7 days (recommended)
+FYI.Queue.delete_completed_jobs(7)
+```
+
+Add this to a scheduled task (using `Oban.Cron`, `Quantum`, or similar):
+
+```elixir
+# Run daily at 3am
+FYI.Queue.delete_completed_jobs(7)
+```
+
+### Worker Scaling
+
+Adjust `queue_workers` based on your event volume:
+
+- **Low volume** (< 100 events/hour): 1-2 workers
+- **Medium volume** (100-1000 events/hour): 2-4 workers
+- **High volume** (> 1000 events/hour): 4-8 workers
+
+Workers automatically scale their polling:
+- Poll fast (100ms) when jobs are available
+- Poll slow (up to 5s) when queue is empty
+
+### Best Practices
+
+1. **Enable in production only**: Use fire-and-forget in dev for faster feedback
+   ```elixir
+   # config/prod.exs
+   config :fyi, queue_enabled: true
+   ```
+
+2. **Monitor failed jobs**: Set up alerts for `FYI.Queue.stats().failed > 10`
+
+3. **Clean up regularly**: Run `delete_completed_jobs/1` daily or weekly
+
+4. **Database indexes**: The migration includes optimized indexes for SKIP LOCKED queries
 
 ## Development
 

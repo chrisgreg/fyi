@@ -10,6 +10,7 @@ defmodule Mix.Tasks.Fyi.Install do
   - `--no-ui` - Skip installing the Phoenix UI components
   - `--no-persist` - Skip the database migration (events won't be persisted)
   - `--no-feedback` - Skip installing the feedback component
+  - `--queue` - Install the queue system for production-ready durable delivery
 
   ## What This Does
 
@@ -31,12 +32,14 @@ defmodule Mix.Tasks.Fyi.Install do
       schema: [
         no_ui: :boolean,
         no_persist: :boolean,
-        no_feedback: :boolean
+        no_feedback: :boolean,
+        queue: :boolean
       ],
       defaults: [
         no_ui: false,
         no_persist: false,
-        no_feedback: false
+        no_feedback: false,
+        queue: false
       ]
     }
   end
@@ -49,9 +52,10 @@ defmodule Mix.Tasks.Fyi.Install do
     |> validate_phoenix_app()
     |> add_to_supervision_tree()
     |> maybe_add_migration(opts)
+    |> maybe_add_queue_migration(opts)
     |> maybe_add_routes(opts)
     |> maybe_add_feedback_component(opts)
-    |> add_config()
+    |> add_config(opts)
   end
 
   defp validate_phoenix_app(igniter) do
@@ -107,6 +111,56 @@ defmodule Mix.Tasks.Fyi.Install do
       """
 
       Igniter.create_new_file(igniter, "priv/repo/migrations/#{filename}", migration_content)
+    end
+  end
+
+  defp maybe_add_queue_migration(igniter, opts) do
+    if opts[:queue] do
+      # Add a small delay to ensure unique timestamp
+      Process.sleep(1000)
+      timestamp = Calendar.strftime(DateTime.utc_now(), "%Y%m%d%H%M%S")
+      filename = "#{timestamp}_create_fyi_jobs.exs"
+
+      migration_content = """
+      defmodule Repo.Migrations.CreateFyiJobs do
+        use Ecto.Migration
+
+        def change do
+          create table(:fyi_jobs, primary_key: false) do
+            add :id, :binary_id, primary_key: true
+            add :event_id, :string, null: false
+            add :sink_module, :string, null: false
+            add :sink_config, :map, default: %{}
+            add :event_payload, :map, null: false
+
+            # Job state
+            add :state, :string, null: false, default: "pending"
+            add :attempts, :integer, null: false, default: 0
+            add :max_attempts, :integer, null: false, default: 10
+
+            # Retry scheduling
+            add :scheduled_at, :utc_datetime_usec, null: false
+            add :attempted_at, :utc_datetime_usec
+            add :completed_at, :utc_datetime_usec
+
+            # Error tracking
+            add :last_error, :text
+            add :errors, :jsonb, default: "[]"
+
+            timestamps(type: :utc_datetime_usec)
+          end
+
+          # Index for efficient job fetching with SKIP LOCKED
+          create index(:fyi_jobs, [:state, :scheduled_at])
+          create index(:fyi_jobs, [:event_id])
+          create index(:fyi_jobs, [:inserted_at])
+        end
+      end
+      """
+
+      Igniter.create_new_file(igniter, "priv/repo/migrations/#{filename}", migration_content)
+    else
+      igniter
     end
   end
 
@@ -337,15 +391,8 @@ defmodule Mix.Tasks.Fyi.Install do
     """
   end
 
-  defp add_config(igniter) do
-    igniter
-    |> Igniter.Project.Config.configure(
-      "config.exs",
-      :fyi,
-      [:persist_events],
-      true
-    )
-    |> Igniter.add_notice("""
+  defp add_config(igniter, opts) do
+    base_notice = """
     Configure FYI in your config/config.exs:
 
         config :fyi,
@@ -362,6 +409,38 @@ defmodule Mix.Tasks.Fyi.Install do
             %{match: "waitlist.*", sinks: [:slack]},
             %{match: "purchase.*", sinks: [:slack, :telegram]}
           ]
-    """)
+    """
+
+    queue_notice = if opts[:queue] do
+      """
+          # Queue configuration for production-ready durable delivery
+          queue_enabled: true,
+          queue_workers: 4,          # Number of concurrent workers
+          queue_poll_interval: 1000  # Poll interval in milliseconds
+      """
+    else
+      ""
+    end
+
+    full_notice = base_notice <> queue_notice
+
+    igniter
+    |> Igniter.Project.Config.configure(
+      "config.exs",
+      :fyi,
+      [:persist_events],
+      true
+    )
+    |> then(fn igniter ->
+      if opts[:queue] do
+        igniter
+        |> Igniter.Project.Config.configure("config.exs", :fyi, [:queue_enabled], true)
+        |> Igniter.Project.Config.configure("config.exs", :fyi, [:queue_workers], 4)
+        |> Igniter.Project.Config.configure("config.exs", :fyi, [:queue_poll_interval], 1000)
+      else
+        igniter
+      end
+    end)
+    |> Igniter.add_notice(full_notice)
   end
 end

@@ -107,4 +107,54 @@ defmodule FYI.Config do
     |> Enum.map(&String.capitalize/1)
     |> Enum.join(" ")
   end
+
+  @doc """
+  Generic config getter.
+  """
+  @spec get(atom(), any()) :: any()
+  def get(key, default \\ nil) do
+    Application.get_env(:fyi, key, default)
+  end
+
+  @doc """
+  Returns whether the queue is enabled.
+
+  ## Configuration
+
+      config :fyi, queue_enabled: true
+
+  Defaults to false for backward compatibility.
+  """
+  @spec queue_enabled?() :: boolean()
+  def queue_enabled? do
+    get(:queue_enabled, false)
+  end
+
+  @doc """
+  Returns the number of queue workers to start.
+
+  ## Configuration
+
+      config :fyi, queue_workers: 4
+
+  Defaults to 2.
+  """
+  @spec queue_workers() :: pos_integer()
+  def queue_workers do
+    get(:queue_workers, 2)
+  end
+
+  @doc """
+  Returns the queue poll interval in milliseconds.
+
+  ## Configuration
+
+      config :fyi, queue_poll_interval: 1000
+
+  Defaults to 1000ms (1 second).
+  """
+  @spec queue_poll_interval() :: pos_integer()
+  def queue_poll_interval do
+    get(:queue_poll_interval, 1_000)
+  end
 end
