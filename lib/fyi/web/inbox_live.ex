@@ -802,6 +802,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp load_events(socket) do
       repo = Application.get_env(:fyi, :repo)
+      prefix = Application.get_env(:fyi, :prefix)
 
       if repo && Code.ensure_loaded?(Event) do
         import Ecto.Query
@@ -833,7 +834,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             query
           end
 
-        events = repo.all(query)
+        events = repo.all(query, prefix: prefix)
         assign(socket, :events, events)
       else
         assign(socket, :events, [])
@@ -842,6 +843,7 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp load_event_types(socket) do
       repo = Application.get_env(:fyi, :repo)
+      prefix = Application.get_env(:fyi, :prefix)
 
       if repo && Code.ensure_loaded?(Event) do
         import Ecto.Query
@@ -852,11 +854,11 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
             distinct: true,
             order_by: [asc: e.name]
           )
-          |> repo.all()
+          |> repo.all(prefix: prefix)
 
         total_count =
           from(e in Event, select: count(e.id))
-          |> repo.one()
+          |> repo.one(prefix: prefix)
 
         socket
         |> assign(:event_types, types)
@@ -1016,9 +1018,10 @@ if Code.ensure_loaded?(Phoenix.LiveView) do
 
     defp load_event_detail(socket, id) do
       repo = Application.get_env(:fyi, :repo)
+      prefix = Application.get_env(:fyi, :prefix)
 
       if repo && Code.ensure_loaded?(Event) do
-        case repo.get(Event, id) do
+        case repo.get(Event, id, prefix: prefix) do
           nil -> assign(socket, :selected_event, nil)
           event -> assign(socket, :selected_event, event)
         end
