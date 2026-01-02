@@ -44,6 +44,7 @@ mix fyi.install
 ```
 
 This will:
+
 1. Add `FYI.Application` to your supervision tree
 2. Create a migration for the `fyi_events` table
 3. Print instructions to add the `/fyi` route to your router
@@ -63,6 +64,7 @@ config :fyi,
   app_name: "MyApp",
   persist_events: true,
   repo: MyApp.Repo,
+  prefix: "fyi", # optional
   sinks: [
     {FYI.Sink.SlackWebhook, %{url: System.get_env("SLACK_WEBHOOK_URL")}},
     {FYI.Sink.Telegram, %{
@@ -92,11 +94,13 @@ Messages will include the app name: `[MyApp] *purchase.created* by user_123`
 Add emojis to your notifications in three ways (in priority order):
 
 **1. Per-event override:**
+
 ```elixir
 FYI.emit("error.critical", %{message: "DB down"}, emoji: "🚨")
 ```
 
 **2. Pattern-based mapping:**
+
 ```elixir
 config :fyi,
   emojis: %{
@@ -108,6 +112,7 @@ config :fyi,
 ```
 
 **3. Default fallback:**
+
 ```elixir
 config :fyi, emoji: "📣"
 ```
@@ -117,6 +122,7 @@ Messages will show as: `💰 [MyApp] *purchase.created* by user_123`
 ### Routing
 
 Routes use simple glob matching:
+
 - `purchase.*` matches `purchase.created`, `purchase.updated`, etc.
 - `*` at the end matches any suffix
 
@@ -135,6 +141,7 @@ FYI.emit("error.critical", %{message: "DB connection failed"}, emoji: "🚨", ta
 ```
 
 Options:
+
 - `:actor` - who triggered the event (user_id, email, etc.)
 - `:source` - where the event originated (e.g., "api", "web", "worker")
 - `:tags` - additional metadata map for filtering
@@ -195,6 +202,7 @@ end
 ```
 
 Visit `/fyi` to see the event inbox with:
+
 - Activity histogram with time-based tooltips
 - Real-time event updates (requires PubSub config)
 - Time range filtering (5 minutes to all time)

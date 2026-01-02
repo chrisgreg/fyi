@@ -25,6 +25,7 @@ defmodule FYI do
       config :fyi,
         persist_events: true,
         repo: MyApp.Repo,
+        prefix: "fyi", # optional
         sinks: [
           {FYI.Sink.SlackWebhook, %{url: System.get_env("SLACK_WEBHOOK_URL")}},
           {FYI.Sink.Telegram, %{
@@ -122,6 +123,7 @@ defmodule FYI do
 
   defp persist_event(event) do
     repo = Application.get_env(:fyi, :repo)
+    prefix = Application.get_env(:fyi, :prefix)
 
     if repo do
       attrs = %{
@@ -134,7 +136,7 @@ defmodule FYI do
         inserted_at: event.occurred_at
       }
 
-      case repo.insert(%FYI.Schema.Event{} |> struct(attrs)) do
+      case repo.insert(%FYI.Schema.Event{} |> struct(attrs), prefix: prefix) do
         {:ok, _} -> :ok
         {:error, changeset} -> {:error, changeset}
       end
