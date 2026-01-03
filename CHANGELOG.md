@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Ecto prefix configuration** - Support namespacing through PostgreSQL schemas, also called "prefixes" in Ecto.
+  - Excluding the `prefix` configuration will use primary schema (usually public).
+
 ## [1.0.2] - 2025-12-28
 
 ### Fixed
@@ -50,4 +53,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Igniter installer** - `mix fyi.install` for one-command setup
 - **Emoji support** - Per-event, pattern-based, and default emoji configuration
 - **App name identification** - Identify events when multiple apps share channels
-
