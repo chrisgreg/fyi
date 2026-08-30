@@ -41,7 +41,7 @@ defmodule FYI.MixProject do
       {:jason, "~> 1.4"},
 
       # Installer
-      {:igniter, "~> 0.5"},
+      {:igniter, "~> 0.5", optional: true},
 
       # Phoenix (optional - for admin UI and feedback component)
       {:ecto_sql, "~> 3.10", optional: true},
